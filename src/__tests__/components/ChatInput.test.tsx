@@ -186,8 +186,21 @@ describe("ChatInput keyboard inset", () => {
 });
 
 describe("ChatInput Ctrl+K shortcut badge", () => {
+  const originalPlatform = Object.getOwnPropertyDescriptor(
+    navigator,
+    "platform",
+  );
+
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    if (originalPlatform) {
+      Object.defineProperty(navigator, "platform", originalPlatform);
+    } else {
+      Reflect.deleteProperty(navigator, "platform");
+    }
   });
 
   it("shows Ctrl+K badge in the empty search bar on non-Apple platforms", () => {
@@ -237,5 +250,70 @@ describe("ChatInput Ctrl+K shortcut badge", () => {
     );
 
     expect(screen.queryByTitle("Focus search")).not.toBeInTheDocument();
+  });
+
+  it("keeps #ws-chat-form input focusable via Ctrl+K", () => {
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "Win32",
+    });
+
+    render(
+      <ChatInput
+        input=""
+        isLoading={false}
+        onInputChange={jest.fn()}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    // Mirrors EnhancedChatbot's global Ctrl/⌘+K handler target
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        (
+          document.querySelector("#ws-chat-form input") as HTMLInputElement
+        )?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    window.removeEventListener("keydown", handler);
+
+    expect(
+      document.querySelector("#ws-chat-form input"),
+    ).toHaveFocus();
+  });
+
+  it("keeps #ws-chat-form input focusable via ⌘K", () => {
+    Object.defineProperty(navigator, "platform", {
+      configurable: true,
+      value: "MacIntel",
+    });
+
+    render(
+      <ChatInput
+        input=""
+        isLoading={false}
+        onInputChange={jest.fn()}
+        onSubmit={jest.fn()}
+      />,
+    );
+
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        (
+          document.querySelector("#ws-chat-form input") as HTMLInputElement
+        )?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    window.removeEventListener("keydown", handler);
+
+    expect(
+      document.querySelector("#ws-chat-form input"),
+    ).toHaveFocus();
   });
 });
